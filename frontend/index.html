@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Supply Chain DApp</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Supply Chain Management</h1>
+
+  <h3>Create Product</h3>
+  <input type="text" id="name" placeholder="Product Name" />
+  <input type="text" id="description" placeholder="Product Description" />
+  <button onclick="createProduct()">Create</button>
+
+  <h3>Update Product Stage</h3>
+  <input type="number" id="updateId" placeholder="Product ID" />
+  <select id="stage">
+    <option value="0">Manufactured</option>
+    <option value="1">Shipped</option>
+    <option value="2">Delivered</option>
+  </select>
+  <button onclick="updateStage()">Update</button>
+
+  <h3>Get Product</h3>
+  <input type="number" id="getId" placeholder="Product ID" />
+  <button onclick="getProduct()">Fetch</button>
+
+  <pre id="output"></pre>
+
+  <script src="app.js"></script>
+</body>
+</html>
