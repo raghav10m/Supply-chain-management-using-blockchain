@@ -1,33 +1,149 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Supply Chain DApp</title>
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Blockchain Supply Chain</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: #f9f9f9;
+      color: #111;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 2rem;
+      background-color: #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .connect-btn {
+      background-color: #111;
+      color: #fff;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .connect-btn:hover {
+      background-color: #333;
+    }
+
+    .main-container {
+      max-width: 960px;
+      margin: 3rem auto;
+      text-align: center;
+    }
+
+    .main-container h2 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .main-container p {
+      font-size: 1rem;
+      color: #555;
+      margin-bottom: 2rem;
+    }
+
+    .role-buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 2rem;
+      padding: 0 1rem;
+    }
+
+    .role-card {
+      background-color: #fff;
+      border-radius: 12px;
+      padding: 2rem 1.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      cursor: pointer;
+    }
+
+    .role-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+
+    .icon-circle {
+      width: 48px;
+      height: 48px;
+      background-color: #e5f0ff;
+      border-radius: 50%;
+      margin: 0 auto 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #3366cc;
+    }
+
+    .role-card h3 {
+      margin: 0.5rem 0;
+      font-size: 1.1rem;
+    }
+
+    .role-card p {
+      font-size: 0.9rem;
+      color: #666;
+    }
+  </style>
 </head>
 <body>
-  <h1>Supply Chain Management</h1>
 
-  <h3>Create Product</h3>
-  <input type="text" id="name" placeholder="Product Name" />
-  <input type="text" id="description" placeholder="Product Description" />
-  <button onclick="createProduct()">Create</button>
+  
 
-  <h3>Update Product Stage</h3>
-  <input type="number" id="updateId" placeholder="Product ID" />
-  <select id="stage">
-    <option value="0">Manufactured</option>
-    <option value="1">Shipped</option>
-    <option value="2">Delivered</option>
-  </select>
-  <button onclick="updateStage()">Update</button>
+  <div class="main-container">
+    <h2>Blockchain Supply Chain</h2>
+    <p>Select your role to interact with the supply chain management system.</p>
 
-  <h3>Get Product</h3>
-  <input type="number" id="getId" placeholder="Product ID" />
-  <button onclick="getProduct()">Fetch</button>
+    <div class="role-buttons">
+      <div class="role-card" onclick="loadPage('Sellers')">
+        <div class="icon-circle">S</div>
+        <h3>Seller</h3>
+        <p>Add and manage products in the supply chain.</p>
+      </div>
+      <div class="role-card" onclick="loadPage('buyers')">
+        <div class="icon-circle">B</div>
+        <h3>Buyer</h3>
+        <p>Browse and acquire products from sellers.</p>
+      </div>
+      <div class="role-card" onclick="loadPage('transporters')">
+        <div class="icon-circle">T</div>
+        <h3>Transporter</h3>
+        <p>Manage shipments and deliveries.</p>
+      </div>
+    </div>
+  </div>
 
-  <pre id="output"></pre>
+  <script>
+    function loadPage(role) {
+      if(role === 'Sellers') {
+        window.location.href = 'landing.html';
+      } else if(role === 'Buyers') {
+        alert('Sellers functionality coming soon!');
+      } else if(role === 'transporters') {
+        alert('Transporters functionality coming soon!');
+      }
+    }
+  </script>
 
-  <script src="app.js"></script>
 </body>
 </html>

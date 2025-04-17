@@ -1,43 +1,89 @@
 let contract;
 let accounts;
+let isReady = false;  // Flag to track if the contract is ready
 
+// Wait for the page to load and initialize Web3 and the contract
 window.addEventListener('load', async () => {
   if (window.ethereum) {
     window.web3 = new Web3(window.ethereum);
-    await window.ethereum.enable();
+    await window.ethereum.enable();  // Request access to the user's Ethereum accounts
   }
 
-  accounts = await web3.eth.getAccounts();
+  accounts = await web3.eth.getAccounts();  // Get the list of accounts
 
-  const res = await fetch('./SupplyChain.json'); // We'll set this up shortly
+  // Fetch the contract ABI and address from the JSON artifact
+  const res = await fetch('./SupplyChain.json');
   const artifact = await res.json();
 
-  const networkId = await web3.eth.net.getId();
-  const deployed = artifact.networks[networkId];
+  const networkId = await web3.eth.net.getId();  // Get the current network ID
+  const deployed = artifact.networks[networkId];  // Get the deployed contract on the current network
 
-  contract = new web3.eth.Contract(artifact.abi, '0x7591EB142a36C439D9CFc63aDA448E2A3D2B3154');
+  if (deployed) {
+    // If deployed contract is found, create a new contract instance
+    contract = new web3.eth.Contract(artifact.abi, deployed.address);
+    isReady = true;  // Mark the contract as ready
+    console.log("Contract is ready.");
+  } else {
+    alert("❌ Contract not deployed on the current network.");
+  }
 });
 
+// Function to create a new product
 async function createProduct() {
-  const name = document.getElementById('name').value;
-  const desc = document.getElementById('description').value;
+  if (!isReady) {
+    alert("⚠️ Contract is still loading. Please try again later.");
+    return;
+  }
 
-  await contract.methods.createProduct(name, desc).send({ from: accounts[0] });
-  alert("Product created!");
+  const id = parseInt(document.getElementById('name').value);  // Get product ID
+  const weight = parseInt(document.getElementById('description').value);  // Get product weight
+  const priceEth = document.getElementById('price').value;  // Get price in ETH
+  const priceWei = web3.utils.toWei(priceEth, 'ether');  // Convert ETH to Wei
+
+  try {
+    await contract.methods.createProduct(id, weight, priceWei).send({ from: accounts[0] });
+    alert("✅ Product created successfully!");
+  } catch (error) {
+    alert("❌ Failed to create product: " + error.message);
+  }
 }
 
+// Function to update product stage
 async function updateStage() {
-  const id = document.getElementById('updateId').value;
-  const stage = document.getElementById('stage').value;
+  if (!isReady) {
+    alert("⚠️ Contract is still loading. Please try again later.");
+    return;
+  }
 
-  await contract.methods.updateProductStage(id, stage).send({ from: accounts[0] });
-  alert("Product stage updated!");
+  const id = parseInt(document.getElementById('updateId').value);
+  const stage = parseInt(document.getElementById('stage').value);
+
+  try {
+    await contract.methods.updateProductStage(id, stage).send({ from: accounts[0] });
+    alert("✅ Product stage updated!");
+  } catch (error) {
+    alert("❌ Failed to update stage: " + error.message);
+  }
 }
 
+// Function to retrieve product details
 async function getProduct() {
-  const id = document.getElementById('getId').value;
-  const result = await contract.methods.getProduct(id).call();
+  if (!isReady) {
+    alert("⚠️ Contract is still loading. Please try again later.");
+    return;
+  }
 
-  document.getElementById('output').textContent =
-    `ID: ${result[0]}\nName: ${result[1]}\nDescription: ${result[2]}\nStage: ${["Manufactured", "Shipped", "Delivered"][result[3]]}`;
+  const id = parseInt(document.getElementById('getId').value);
+
+  try {
+    const result = await contract.methods.getProduct(id).call();
+
+    document.getElementById('output').textContent =
+      `ID: ${result[0]}
+Weight: ${result[1]} kg
+Price: ${web3.utils.fromWei(result[2], 'ether')} ETH
+Stage: ${["Manufactured", "Shipped", "Delivered"][result[3]]}`;
+  } catch (error) {
+    document.getElementById('output').textContent = "❌ Product not found.";
+  }
 }

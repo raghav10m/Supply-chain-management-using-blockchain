@@ -4,33 +4,35 @@ pragma solidity ^0.8.0;
 contract SupplyChain {
     struct Product {
         uint id;
-        string name;
-        string description;
+        uint weight;
+        uint price;
         uint stage;
     }
 
     mapping(uint => Product) public products;
     uint public productCount = 0;
 
-    event ProductCreated(uint id, string name, string description);
+    event ProductCreated(uint id, uint weight, uint price);
     event ProductUpdated(uint id, uint stage);
 
-    function createProduct(string memory _name, string memory _description) public {
+    function createProduct(uint _id, uint _weight, uint _price) public {
+        require(products[_id].id == 0, "Product already exists");
+
         productCount++;
-        products[productCount] = Product(productCount, _name, _description, 0);
-        emit ProductCreated(productCount, _name, _description);
+        products[_id] = Product(_id, _weight, _price, 0);
+        emit ProductCreated(_id, _weight, _price);
     }
 
     function updateProductStage(uint _id, uint _stage) public {
-        require(_id > 0 && _id <= productCount, "Product not found");
+        require(products[_id].id != 0, "Product not found");
         require(_stage <= 5, "Invalid stage");
         products[_id].stage = _stage;
         emit ProductUpdated(_id, _stage);
     }
 
-    function getProduct(uint _id) public view returns (uint, string memory, string memory, uint) {
-        require(_id > 0 && _id <= productCount, "Product not found");
+    function getProduct(uint _id) public view returns (uint, uint, uint, uint) {
+        require(products[_id].id != 0, "Product not found");
         Product memory p = products[_id];
-        return (p.id, p.name, p.description, p.stage);
+        return (p.id, p.weight, p.price, p.stage);
     }
 }

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Supply Chain DApp</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f9fafb;
+      color: #111;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: white;
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .nav-left {
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    .nav-right {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+    }
+
+    .nav-right a {
+      text-decoration: none;
+      color: #666;
+      font-weight: 500;
+    }
+
+    .nav-right a.active {
+      color: #007bff;
+    }
+
+    .connect-btn {
+      background-color: #111;
+      color: white;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .main {
+      display: flex;
+      padding: 2rem;
+      gap: 2rem;
+    }
+
+    .card {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      flex: 1;
+    }
+
+    .card h3 {
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 0.7rem 1rem;
+      margin-bottom: 1rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background-color: #4a90e2;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.5rem;
+    }
+
+    .info-section h3 {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+    }
+
+    .info-section p {
+      margin-bottom: 1rem;
+      color: #777;
+    }
+
+    .info-section {
+      flex: 2;
+    }
+
+    pre {
+      background: #f1f1f1;
+      padding: 1rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      overflow-x: auto;
+    }
+
+    @media (max-width: 768px) {
+      .main {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="nav-left">BlockChain Supply</div>
+    <div class="nav-right">
+      <a href="#" class="active">Seller</a>
+      <a href="#">Buyer</a>
+      <a href="#">Transporter</a>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- Left Form Section -->
+    <div class="card">
+      <h3>Add Product</h3>
+      <input type="text" id="name" placeholder="Enter unique product ID" />
+      <input type="text" id="description" placeholder="Enter product weight (kg)" />
+      <input type="text" id="price" placeholder="Enter product price (ETH)" />
+      <button onclick="createProduct()">Add Product</button>
+
+      <h3 style="margin-top:2rem;">Update Product Stage</h3>
+      <input type="number" id="updateId" placeholder="Product ID" />
+      <select id="stage">
+        <option value="0">Manufactured</option>
+        <option value="1">Shipped</option>
+        <option value="2">Delivered</option>
+      </select>
+      <button onclick="updateStage()">Update</button>
+
+      <h3 style="margin-top:2rem;">Get Product</h3>
+      <input type="number" id="getId" placeholder="Product ID" />
+      <button onclick="getProduct()">Fetch</button>
+    </div>
+
+    <!-- Right Info Section -->
+    <div class="info-section">
+      <h3>Posted Products</h3>
+      <p>No products posted yet</p>
+
+      <h3>In Process Products</h3>
+      <p>No products in process</p>
+
+      <h3>Fetched Product Details</h3>
+      <pre id="output">No product selected</pre>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
