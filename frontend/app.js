@@ -28,6 +28,120 @@ window.addEventListener('load', async () => {
   }
 });
 
+// Function to purchase a product
+async function purchaseProduct(id) {
+  if (!isReady) {
+    alert("⚠️ Contract is still loading.");
+    return;
+  }
+
+  const product = await contract.methods.getProduct(id).call();
+  const priceWei = product[2]; // Product price in Wei
+
+  try {
+    console.log("Attempting to purchase product with ID:", id);
+    console.log("Price in Wei:", priceWei);
+
+    const tx = await contract.methods.purchaseProduct(id).send({
+      from: accounts[0],
+      value: priceWei,
+      gas: 2000000 // increase gas limit if necessary
+    });
+
+    console.log("Transaction Receipt:", tx); // Log the transaction receipt for debugging
+    alert(`✅ Product ID ${id} purchased successfully!`);
+    loadPurchasedProducts(); // Refresh the purchased products view
+  } catch (error) {
+    console.error("Purchase failed:", error); // Log the error details
+    alert("❌ Failed to purchase product: " + error.message);
+  }
+}
+
+// Load posted products (those available for purchase)
+async function loadPostedProducts() {
+  const container = document.getElementById('postedProducts');
+  container.innerHTML = "<p>Loading...</p>";
+
+  try {
+    const ids = await contract.methods.getAllProductIds().call();
+    if (ids.length === 0) {
+      container.innerHTML = "<p class='empty-text'>No products available for purchase</p>";
+      return;
+    }
+
+    container.innerHTML = '';
+
+    for (let id of ids) {
+      const product = await contract.methods.getProduct(id).call();
+
+      const div = document.createElement('a');
+      div.className = 'product';
+      div.href = '#';
+
+      div.innerHTML = `
+        <div class="product-info">
+          <p><strong>Product ID: ${id}</strong></p>
+          <p>Weight: ${product[1]} kg</p>
+          <p>Price: ${web3.utils.fromWei(product[2], 'ether')} ETH</p>
+          <p>Status (stage): ${product[3] < 3 ? 'Available for Purchase' : 'Purchased'}</p>
+        </div>
+      `;
+
+      // If the product is available for purchase, allow clicking to purchase it
+      if (product[3] < 3) {
+        div.addEventListener('click', (e) => {
+          e.preventDefault(); // Prevent default link action
+          purchaseProduct(id); // Call the purchase function
+        });
+      }
+
+      container.appendChild(div);
+    }
+
+  } catch (err) {
+    container.innerHTML = "⚠️ Failed to load products.";
+    console.error(err);
+  }
+}
+
+// Load purchased products (those owned by the sender)
+async function loadPurchasedProducts() {
+  const container = document.getElementById('purchasedProducts');
+  container.innerHTML = "<p>Loading purchased products...</p>";
+
+  try {
+    const ids = await contract.methods.getPurchasedProductIds().call({ from: accounts[0] });
+    if (ids.length === 0) {
+      container.innerHTML = "<p class='empty-text'>You have not purchased any products</p>";
+      return;
+    }
+
+    container.innerHTML = '';
+
+    for (let id of ids) {
+      const product = await contract.methods.getProduct(id).call();
+
+      const div = document.createElement('div');
+      div.className = 'product';
+      div.innerHTML = `
+        <div class="product-info">
+          <p><strong>Product ID: ${id}</strong></p>
+          <p>Weight: ${product[1]} kg</p>
+          <p>Price: ${web3.utils.fromWei(product[2], 'ether')} ETH</p>
+          <p>Status: Purchased</p>
+        </div>
+      `;
+
+      container.appendChild(div);
+    }
+
+  } catch (err) {
+    container.innerHTML = "⚠️ Failed to load purchased products.";
+    console.error(err);
+  }
+}
+
+// Function to connect to MetaMask and display the connected account
 async function connectMetaMask() {
   if (!web3) {
     alert('Please install MetaMask');
@@ -42,6 +156,7 @@ async function connectMetaMask() {
   }
 }
 
+// Existing createProduct function (no change)
 async function createProduct() {
   if (!isReady) {
     alert("⚠️ Contract is still loading. Please try again later.");
@@ -62,6 +177,7 @@ async function createProduct() {
   }
 }
 
+// Existing updateStage function (no change)
 async function updateStage() {
   if (!isReady) {
     alert("⚠️ Contract is still loading. Please try again later.");
@@ -80,6 +196,7 @@ async function updateStage() {
   }
 }
 
+// Existing getProduct function (no change)
 async function getProduct() {
   if (!isReady) {
     alert("⚠️ Contract is still loading. Please try again later.");
@@ -98,67 +215,5 @@ Price: ${web3.utils.fromWei(result[2], 'ether')} ETH
 Stage: ${["Manufactured", "Shipped", "Delivered"][result[3]] ?? "Unknown"}`;
   } catch (error) {
     document.getElementById('output').textContent = "❌ Product not found.";
-  }
-}
-
-async function loadPostedProducts() {
-  const container = document.getElementById('postedProducts');
-  container.innerHTML = "<p>Loading...</p>";
-
-  try {
-    const ids = await contract.methods.getAllProductIds().call();
-    if (ids.length === 0) {
-      container.innerHTML = "<p class='empty-text'>No products available for purchase</p>";
-      return;
-    }
-
-    container.innerHTML = '';
-
-    for (let id of ids) {
-      const product = await contract.methods.products(id).call();
-
-      const div = document.createElement('a');
-      div.className = 'product';
-      div.href = '#';
-
-      div.innerHTML = `
-        <div class="product-info">
-          <p><strong>Product ID: ${id}</strong></p>
-          <p>Weight: ${product.weight} kg</p>
-          <p>Price: ${web3.utils.fromWei(product.price, 'ether')} ETH</p>
-          <p>Status (stage): ${product.stage}</p>
-        </div>
-      `;
-
-      div.addEventListener('click', () => handleProductClick(id));
-      container.appendChild(div);
-    }
-
-  } catch (err) {
-    container.innerHTML = "⚠️ Failed to load products.";
-    console.error(err);
-  }
-}
-
-async function handleProductClick(id) {
-  if (!isReady) {
-    alert("⚠️ Contract is still loading.");
-    return;
-  }
-
-  try {
-    const product = await contract.methods.products(id).call();
-    const nextStage = parseInt(product.stage) + 1;
-
-    if (nextStage > 5) {
-      alert("✅ Product has already reached the final stage.");
-      return;
-    }
-
-    await contract.methods.updateProductStage(id, nextStage).send({ from: accounts[0] });
-    alert(`✅ Product ID ${id} moved to stage ${nextStage}`);
-    loadPostedProducts();
-  } catch (error) {
-    alert("❌ Failed to update product stage: " + error.message);
   }
 }
