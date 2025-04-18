@@ -1,54 +1,53 @@
 let contract;
 let accounts;
-let isReady = false;  // Flag to track if the contract is ready
+let isReady = false;
 
-// Wait for the page to load and initialize Web3 and the contract
 window.addEventListener('load', async () => {
   if (window.ethereum) {
     window.web3 = new Web3(window.ethereum);
-    await window.ethereum.enable();  // Request access to the user's Ethereum accounts
+    await window.ethereum.enable();
   }
 
-  accounts = await web3.eth.getAccounts();  // Get the list of accounts
+  accounts = await web3.eth.getAccounts();
 
-  // Fetch the contract ABI and address from the JSON artifact
   const res = await fetch('./SupplyChain.json');
   const artifact = await res.json();
 
-  const networkId = await web3.eth.net.getId();  // Get the current network ID
-  const deployed = artifact.networks[networkId];  // Get the deployed contract on the current network
+  const networkId = await web3.eth.net.getId();
+  const deployed = artifact.networks[networkId];
 
   if (deployed) {
-    // If deployed contract is found, create a new contract instance
     contract = new web3.eth.Contract(artifact.abi, deployed.address);
-    isReady = true;  // Mark the contract as ready
+    isReady = true;
     console.log("Contract is ready.");
+    loadPostedProducts(); // Load products on startup
   } else {
     alert("❌ Contract not deployed on the current network.");
   }
 });
 
-// Function to create a new product
+// Create Product
 async function createProduct() {
   if (!isReady) {
     alert("⚠️ Contract is still loading. Please try again later.");
     return;
   }
 
-  const id = parseInt(document.getElementById('name').value);  // Get product ID
-  const weight = parseInt(document.getElementById('description').value);  // Get product weight
-  const priceEth = document.getElementById('price').value;  // Get price in ETH
-  const priceWei = web3.utils.toWei(priceEth, 'ether');  // Convert ETH to Wei
+  const id = parseInt(document.getElementById('name').value);
+  const weight = parseInt(document.getElementById('description').value);
+  const priceEth = document.getElementById('price').value;
+  const priceWei = web3.utils.toWei(priceEth, 'ether');
 
   try {
     await contract.methods.createProduct(id, weight, priceWei).send({ from: accounts[0] });
     alert("✅ Product created successfully!");
+    loadPostedProducts();  // Refresh product list after creation
   } catch (error) {
     alert("❌ Failed to create product: " + error.message);
   }
 }
 
-// Function to update product stage
+// Update Stage
 async function updateStage() {
   if (!isReady) {
     alert("⚠️ Contract is still loading. Please try again later.");
@@ -61,12 +60,13 @@ async function updateStage() {
   try {
     await contract.methods.updateProductStage(id, stage).send({ from: accounts[0] });
     alert("✅ Product stage updated!");
+    loadPostedProducts();  // Optional: reload products if stage changes are important
   } catch (error) {
     alert("❌ Failed to update stage: " + error.message);
   }
 }
 
-// Function to retrieve product details
+// Get Product by ID
 async function getProduct() {
   if (!isReady) {
     alert("⚠️ Contract is still loading. Please try again later.");
@@ -82,8 +82,37 @@ async function getProduct() {
       `ID: ${result[0]}
 Weight: ${result[1]} kg
 Price: ${web3.utils.fromWei(result[2], 'ether')} ETH
-Stage: ${["Manufactured", "Shipped", "Delivered"][result[3]]}`;
+Stage: ${["Manufactured", "Shipped", "Delivered"][result[3]] ?? "Unknown"}`;
   } catch (error) {
     document.getElementById('output').textContent = "❌ Product not found.";
   }
 }
+
+// Load and display all posted products
+async function loadPostedProducts() {
+    const container = document.getElementById('postedProducts');
+    container.innerHTML = "Loading...";
+  
+    try {
+      const ids = await contract.methods.getAllProductIds().call();
+      if (ids.length === 0) {
+        container.innerHTML = "No products posted yet.";
+        return;
+      }
+  
+      let html = "<ul style='padding-left: 1rem;'>";
+      for (let id of ids) {
+        const product = await contract.methods.products(id).call();
+        html += `<li><strong>ID:</strong> ${product.id}, 
+                 <strong>Weight:</strong> ${product.weight} kg, 
+                 <strong>Price:</strong> ${web3.utils.fromWei(product.price, 'ether')} ETH,
+                 <strong>Stage:</strong> ${product.stage}</li>`;
+      }
+      html += "</ul>";
+      container.innerHTML = html;
+    } catch (err) {
+      container.innerHTML = "⚠️ Failed to load products.";
+      console.error(err);
+    }
+  }
+  

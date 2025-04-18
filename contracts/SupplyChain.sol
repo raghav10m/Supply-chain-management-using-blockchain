@@ -10,6 +10,7 @@ contract SupplyChain {
     }
 
     mapping(uint => Product) public products;
+    uint[] public productIds; // 🆕 Array to store actual product IDs
     uint public productCount = 0;
 
     event ProductCreated(uint id, uint weight, uint price);
@@ -20,6 +21,7 @@ contract SupplyChain {
 
         productCount++;
         products[_id] = Product(_id, _weight, _price, 0);
+        productIds.push(_id); // 🆕 Track the ID
         emit ProductCreated(_id, _weight, _price);
     }
 
@@ -34,5 +36,10 @@ contract SupplyChain {
         require(products[_id].id != 0, "Product not found");
         Product memory p = products[_id];
         return (p.id, p.weight, p.price, p.stage);
+    }
+
+    // 🆕 Function to get all product IDs
+    function getAllProductIds() public view returns (uint[] memory) {
+        return productIds;
     }
 }
