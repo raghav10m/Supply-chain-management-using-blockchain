@@ -1,32 +1,47 @@
+let web3;
 let contract;
 let accounts;
 let isReady = false;
 
 window.addEventListener('load', async () => {
   if (window.ethereum) {
-    window.web3 = new Web3(window.ethereum);
+    web3 = new Web3(window.ethereum);
     await window.ethereum.enable();
-  }
+    accounts = await web3.eth.getAccounts();
 
-  accounts = await web3.eth.getAccounts();
+    const res = await fetch('./SupplyChain.json');
+    const artifact = await res.json();
 
-  const res = await fetch('./SupplyChain.json');
-  const artifact = await res.json();
+    const networkId = await web3.eth.net.getId();
+    const deployed = artifact.networks[networkId];
 
-  const networkId = await web3.eth.net.getId();
-  const deployed = artifact.networks[networkId];
-
-  if (deployed) {
-    contract = new web3.eth.Contract(artifact.abi, deployed.address);
-    isReady = true;
-    console.log("Contract is ready.");
-    loadPostedProducts(); // Load products on startup
+    if (deployed) {
+      contract = new web3.eth.Contract(artifact.abi, deployed.address);
+      isReady = true;
+      console.log("Contract is ready.");
+      loadPostedProducts(); // Load products on startup
+    } else {
+      alert("❌ Contract not deployed on the current network.");
+    }
   } else {
-    alert("❌ Contract not deployed on the current network.");
+    alert('Please install MetaMask');
   }
 });
 
-// Create Product
+async function connectMetaMask() {
+  if (!web3) {
+    alert('Please install MetaMask');
+    return;
+  }
+
+  accounts = await web3.eth.getAccounts();
+  alert('Connected to MetaMask: ' + accounts[0]);
+
+  if (contract && isReady) {
+    loadPostedProducts();
+  }
+}
+
 async function createProduct() {
   if (!isReady) {
     alert("⚠️ Contract is still loading. Please try again later.");
@@ -41,13 +56,12 @@ async function createProduct() {
   try {
     await contract.methods.createProduct(id, weight, priceWei).send({ from: accounts[0] });
     alert("✅ Product created successfully!");
-    loadPostedProducts();  // Refresh product list after creation
+    loadPostedProducts();
   } catch (error) {
     alert("❌ Failed to create product: " + error.message);
   }
 }
 
-// Update Stage
 async function updateStage() {
   if (!isReady) {
     alert("⚠️ Contract is still loading. Please try again later.");
@@ -60,13 +74,12 @@ async function updateStage() {
   try {
     await contract.methods.updateProductStage(id, stage).send({ from: accounts[0] });
     alert("✅ Product stage updated!");
-    loadPostedProducts();  // Optional: reload products if stage changes are important
+    loadPostedProducts();
   } catch (error) {
     alert("❌ Failed to update stage: " + error.message);
   }
 }
 
-// Get Product by ID
 async function getProduct() {
   if (!isReady) {
     alert("⚠️ Contract is still loading. Please try again later.");
@@ -88,31 +101,64 @@ Stage: ${["Manufactured", "Shipped", "Delivered"][result[3]] ?? "Unknown"}`;
   }
 }
 
-// Load and display all posted products
 async function loadPostedProducts() {
-    const container = document.getElementById('postedProducts');
-    container.innerHTML = "Loading...";
-  
-    try {
-      const ids = await contract.methods.getAllProductIds().call();
-      if (ids.length === 0) {
-        container.innerHTML = "No products posted yet.";
-        return;
-      }
-  
-      let html = "<ul style='padding-left: 1rem;'>";
-      for (let id of ids) {
-        const product = await contract.methods.products(id).call();
-        html += `<li><strong>ID:</strong> ${product.id}, 
-                 <strong>Weight:</strong> ${product.weight} kg, 
-                 <strong>Price:</strong> ${web3.utils.fromWei(product.price, 'ether')} ETH,
-                 <strong>Stage:</strong> ${product.stage}</li>`;
-      }
-      html += "</ul>";
-      container.innerHTML = html;
-    } catch (err) {
-      container.innerHTML = "⚠️ Failed to load products.";
-      console.error(err);
+  const container = document.getElementById('postedProducts');
+  container.innerHTML = "<p>Loading...</p>";
+
+  try {
+    const ids = await contract.methods.getAllProductIds().call();
+    if (ids.length === 0) {
+      container.innerHTML = "<p class='empty-text'>No products available for purchase</p>";
+      return;
     }
+
+    container.innerHTML = '';
+
+    for (let id of ids) {
+      const product = await contract.methods.products(id).call();
+
+      const div = document.createElement('a');
+      div.className = 'product';
+      div.href = '#';
+
+      div.innerHTML = `
+        <div class="product-info">
+          <p><strong>Product ID: ${id}</strong></p>
+          <p>Weight: ${product.weight} kg</p>
+          <p>Price: ${web3.utils.fromWei(product.price, 'ether')} ETH</p>
+          <p>Status (stage): ${product.stage}</p>
+        </div>
+      `;
+
+      div.addEventListener('click', () => handleProductClick(id));
+      container.appendChild(div);
+    }
+
+  } catch (err) {
+    container.innerHTML = "⚠️ Failed to load products.";
+    console.error(err);
   }
-  
+}
+
+async function handleProductClick(id) {
+  if (!isReady) {
+    alert("⚠️ Contract is still loading.");
+    return;
+  }
+
+  try {
+    const product = await contract.methods.products(id).call();
+    const nextStage = parseInt(product.stage) + 1;
+
+    if (nextStage > 5) {
+      alert("✅ Product has already reached the final stage.");
+      return;
+    }
+
+    await contract.methods.updateProductStage(id, nextStage).send({ from: accounts[0] });
+    alert(`✅ Product ID ${id} moved to stage ${nextStage}`);
+    loadPostedProducts();
+  } catch (error) {
+    alert("❌ Failed to update product stage: " + error.message);
+  }
+}
