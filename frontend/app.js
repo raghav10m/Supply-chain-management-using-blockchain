@@ -18,17 +18,43 @@ window.addEventListener('load', async () => {
     if (deployed) {
       contract = new web3.eth.Contract(artifact.abi, deployed.address);
       isReady = true;
-      console.log("Contract is ready.");
-      loadPostedProducts(); // Load products on startup
+      console.log("✅ Contract is ready.");
+    
+      const isTransporterPage = document.getElementById('postedShipments') && document.getElementById('AcquiredShipments');
+    
+      if (isTransporterPage) {
+        loadAvailableShipments();
+        loadInTransitShipments(); // This will populate the 'Shipments in Transit' section
+      } else {
+        loadPostedProducts();
+        loadPurchasedProducts();
+      }
     } else {
       alert("❌ Contract not deployed on the current network.");
     }
+    
   } else {
     alert('Please install MetaMask');
   }
 });
 
-// Function to purchase a product
+// Connect MetaMask button
+async function connectMetaMask() {
+  if (!web3) {
+    alert('Please install MetaMask');
+    return;
+  }
+
+  accounts = await web3.eth.getAccounts();
+  alert('Connected to MetaMask: ' + accounts[0]);
+
+  if (contract && isReady) {
+    loadPostedProducts();
+    loadPurchasedProducts();
+  }
+}
+
+// Purchase product
 async function purchaseProduct(id) {
   if (!isReady) {
     alert("⚠️ Contract is still loading.");
@@ -36,87 +62,86 @@ async function purchaseProduct(id) {
   }
 
   const product = await contract.methods.getProduct(id).call();
-  const priceWei = product[2]; // Product price in Wei
+  const priceWei = product[2];
 
   try {
-    console.log("Attempting to purchase product with ID:", id);
-    console.log("Price in Wei:", priceWei);
+    console.log(`Purchasing product ID ${id} for ${priceWei} wei`);
 
     const tx = await contract.methods.purchaseProduct(id).send({
       from: accounts[0],
       value: priceWei,
-      gas: 2000000 // increase gas limit if necessary
+      gas: 2000000,
     });
 
-    console.log("Transaction Receipt:", tx); // Log the transaction receipt for debugging
+    console.log("Transaction Receipt:", tx);
     alert(`✅ Product ID ${id} purchased successfully!`);
-    loadPurchasedProducts(); // Refresh the purchased products view
+
+    await loadPostedProducts();    // Refresh posted list
+    await loadPurchasedProducts(); // Refresh purchased list
   } catch (error) {
-    console.error("Purchase failed:", error); // Log the error details
+    console.error("❌ Purchase failed:", error);
     alert("❌ Failed to purchase product: " + error.message);
   }
 }
 
-// Load posted products (those available for purchase)
+// Load products available for purchase
 async function loadPostedProducts() {
   const container = document.getElementById('postedProducts');
   container.innerHTML = "<p>Loading...</p>";
 
   try {
     const ids = await contract.methods.getAllProductIds().call();
+    container.innerHTML = "";
+
     if (ids.length === 0) {
       container.innerHTML = "<p class='empty-text'>No products available for purchase</p>";
       return;
     }
 
-    container.innerHTML = '';
-
     for (let id of ids) {
       const product = await contract.methods.getProduct(id).call();
+      const status = product[3] < 3 ? "Available for Purchase" : "Purchased";
 
       const div = document.createElement('a');
       div.className = 'product';
-      div.href = '#';
-
+      div.href = "#";
       div.innerHTML = `
         <div class="product-info">
           <p><strong>Product ID: ${id}</strong></p>
           <p>Weight: ${product[1]} kg</p>
           <p>Price: ${web3.utils.fromWei(product[2], 'ether')} ETH</p>
-          <p>Status (stage): ${product[3] < 3 ? 'Available for Purchase' : 'Purchased'}</p>
+          <p>Status (stage): ${status}</p>
         </div>
       `;
 
-      // If the product is available for purchase, allow clicking to purchase it
       if (product[3] < 3) {
         div.addEventListener('click', (e) => {
-          e.preventDefault(); // Prevent default link action
-          purchaseProduct(id); // Call the purchase function
+          e.preventDefault();
+          purchaseProduct(id);
         });
       }
 
       container.appendChild(div);
     }
-
   } catch (err) {
     container.innerHTML = "⚠️ Failed to load products.";
     console.error(err);
   }
 }
 
-// Load purchased products (those owned by the sender)
+// Load products the user has purchased
 async function loadPurchasedProducts() {
   const container = document.getElementById('purchasedProducts');
   container.innerHTML = "<p>Loading purchased products...</p>";
 
   try {
     const ids = await contract.methods.getPurchasedProductIds().call({ from: accounts[0] });
+    container.innerHTML = "";
+
     if (ids.length === 0) {
       container.innerHTML = "<p class='empty-text'>You have not purchased any products</p>";
       return;
     }
-
-    container.innerHTML = '';
 
     for (let id of ids) {
       const product = await contract.methods.getProduct(id).call();
@@ -134,29 +159,15 @@ async function loadPurchasedProducts() {
 
       container.appendChild(div);
     }
-
   } catch (err) {
     container.innerHTML = "⚠️ Failed to load purchased products.";
     console.error(err);
   }
 }
 
-// Function to connect to MetaMask and display the connected account
-async function connectMetaMask() {
-  if (!web3) {
-    alert('Please install MetaMask');
-    return;
-  }
+// (Optional utility functions below if needed elsewhere in your app)
 
-  accounts = await web3.eth.getAccounts();
-  alert('Connected to MetaMask: ' + accounts[0]);
-
-  if (contract && isReady) {
-    loadPostedProducts();
-  }
-}
-
-// Existing createProduct function (no change)
+// Create product
 async function createProduct() {
   if (!isReady) {
     alert("⚠️ Contract is still loading. Please try again later.");
@@ -177,7 +188,7 @@ async function createProduct() {
   }
 }
 
-// Existing updateStage function (no change)
+// Update product stage
 async function updateStage() {
   if (!isReady) {
     alert("⚠️ Contract is still loading. Please try again later.");
@@ -196,7 +207,7 @@ async function updateStage() {
   }
 }
 
-// Existing getProduct function (no change)
+// Fetch product details
 async function getProduct() {
   if (!isReady) {
     alert("⚠️ Contract is still loading. Please try again later.");
@@ -207,13 +218,100 @@ async function getProduct() {
 
   try {
     const result = await contract.methods.getProduct(id).call();
-
     document.getElementById('output').textContent =
       `ID: ${result[0]}
 Weight: ${result[1]} kg
 Price: ${web3.utils.fromWei(result[2], 'ether')} ETH
-Stage: ${["Manufactured", "Shipped", "Delivered"][result[3]] ?? "Unknown"}`;
+Stage: ${["Manufactured", "Shipped", "Delivered", "Purchased"][result[3]] ?? "Unknown"}`;
   } catch (error) {
     document.getElementById('output').textContent = "❌ Product not found.";
   }
 }
+
+async function acceptShipment(id) {
+  try {
+    await contract.methods.acceptShipment(id).send({ from: accounts[0] });
+    alert(`✅ Shipment for Product ID ${id} accepted!`);
+    loadAvailableShipments(); // Refresh the list
+    loadInTransitShipments();
+  } catch (error) {
+    alert("❌ Failed to accept shipment: " + error.message);
+  }
+}
+
+async function loadAvailableShipments() {
+  const container = document.getElementById('postedShipments');
+  container.innerHTML = "<p>Loading available shipments...</p>";
+
+  try {
+    const ids = await contract.methods.getAllProductIds().call();
+    container.innerHTML = "";
+
+    let found = false;
+
+    for (let id of ids) {
+      const product = await contract.methods.getProduct(id).call();
+
+      if (parseInt(product[3]) === 3) { // Status: Purchased
+        found = true;
+
+        const div = document.createElement('div');
+        div.className = 'product';
+        div.innerHTML = `
+          <div class="product-info">
+            <p><strong>Product ID: ${id}</strong></p>
+            <p>Weight: ${product[1]} kg</p>
+            <p>Price: ${web3.utils.fromWei(product[2], 'ether')} ETH</p>
+            <p>Status: Purchased (Awaiting Pickup)</p>
+          </div>
+          <button class="buy-btn" onclick="acceptShipment(${id})">Accept Shipment</button>
+        `;
+
+        container.appendChild(div);
+      }
+    }
+
+    if (!found) {
+      container.innerHTML = "<p class='empty-text'>No shipments available for pickup</p>";
+    }
+  } catch (err) {
+    container.innerHTML = "⚠️ Failed to load available shipments.";
+    console.error(err);
+  }
+}
+
+async function loadInTransitShipments() {
+  const container = document.getElementById('AcquiredShipments');
+  container.innerHTML = "<p>Loading shipments in transit...</p>";
+
+  try {
+    const ids = await contract.methods.getAllProductIds().call();
+    container.innerHTML = "";
+
+    for (let id of ids) {
+      const product = await contract.methods.getProduct(id).call();
+
+      const div = document.createElement('div');
+      div.className = 'product';
+      div.innerHTML = `
+        <div class="product-info">
+          <p><strong>Product ID: ${id}</strong></p>
+          <p>Weight: ${product[1]} kg</p>
+          <p>Price: ${web3.utils.fromWei(product[2], 'ether')} ETH</p>
+          <p>Status Code: ${product[3]}</p>
+        </div>
+      `;
+
+      container.appendChild(div);
+    }
+
+    if (ids.length === 0) {
+      container.innerHTML = "<p class='empty-text'>No shipments found</p>";
+    }
+  } catch (err) {
+    container.innerHTML = "⚠ Failed to load shipments.";
+    console.error(err);
+  }
+}
+
+

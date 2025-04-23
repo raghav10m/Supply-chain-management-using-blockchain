@@ -71,4 +71,13 @@ contract SupplyChain {
         Product memory p = products[_id];
         return (p.id, p.weight, p.price, p.stage);
     }
+    // Function to accept shipment (moves product to "Shipped" stage)
+    function acceptShipment(uint _id) public {
+        require(products[_id].id != 0, "Product not found");
+        require(products[_id].stage == 3, "Product must be purchased first");
+
+        products[_id].stage = 1; // Update to "Shipped"
+        emit ProductUpdated(_id, 1);
+    }
+
 }
