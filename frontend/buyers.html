@@ -149,6 +149,9 @@
 
       <h3>Shipments In Transit</h3>
       <div id="AcquiredShipments" class="empty-text">No shipments currently in transit</div>
+
+      <h3>Delivered Shipments</h3>
+      <div id="shipmentsDelivered" class="empty-text">No shipments Delivered</div>
     </div>
   </div>
 
@@ -174,7 +177,9 @@
           // Load products and shipments for buyer
         
           loadPurchasedProducts();
-          loadInTransitShipments(); // Fetch in-transit shipments
+          loadInTransitShipments(true); // Fetch in-transit shipments
+          loadDeliveredShipments(); // Add this alongside the others
+
 
         } else {
           alert("❌ Contract not deployed on current network.");

@@ -80,4 +80,13 @@ contract SupplyChain {
         emit ProductUpdated(_id, 1);
     }
 
+    // Function to confirm delivery (moves product to "Delivered" stage)
+    function confirmDelivery(uint _id) public {
+        require(products[_id].id != 0, "Product not found");
+        require(products[_id].stage == 1, "Product must be in transit to be delivered");
+
+        products[_id].stage = 4; // Update to "Delivered"
+        emit ProductUpdated(_id, 4);
+    }
+
 }

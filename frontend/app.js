@@ -280,38 +280,96 @@ async function loadAvailableShipments() {
   }
 }
 
-async function loadInTransitShipments() {
-  const container = document.getElementById('AcquiredShipments');
-  container.innerHTML = "<p>Loading shipments in transit...</p>";
+async function loadInTransitShipments(forBuyer = false) {
+  const container = document.getElementById("AcquiredShipments");
+  container.innerHTML = "";
+
+  const ids = await contract.methods.getPurchasedProductIds().call({ from: accounts[0] });
+
+  let hasInTransit = false;
+
+  for (let id of ids) {
+    const product = await contract.methods.getProduct(id).call();
+    if (parseInt(product[3]) === 1) {
+      hasInTransit = true;
+
+      const div = document.createElement("div");
+      div.className = "product";
+
+      let html = `
+        <div class="product-info">
+          <p><strong>ID:</strong> ${product[0]}</p>
+          <p><strong>Weight:</strong> ${product[1]}</p>
+          <p><strong>Price:</strong> ${web3.utils.fromWei(product[2], "ether")} ETH</p>
+        </div>
+      `;
+
+      if (forBuyer) {
+        html += `<button class="buy-btn" onclick="confirmDelivery(${product[0]})">Confirm Delivery</button>`;
+      }
+
+      div.innerHTML = html;
+      container.appendChild(div);
+    }
+  }
+
+  if (!hasInTransit) {
+    container.innerHTML = `<div class="empty-text">No shipments currently in transit</div>`;
+  }
+}
+
+
+async function loadDeliveredShipments() {
+  const container = document.getElementById('shipmentsDelivered');
+  container.innerHTML = "<p>Loading delivered shipments...</p>";
 
   try {
     const ids = await contract.methods.getAllProductIds().call();
     container.innerHTML = "";
 
+    let found = false;
+
     for (let id of ids) {
       const product = await contract.methods.getProduct(id).call();
 
-      const div = document.createElement('div');
-      div.className = 'product';
-      div.innerHTML = `
-        <div class="product-info">
-          <p><strong>Product ID: ${id}</strong></p>
-          <p>Weight: ${product[1]} kg</p>
-          <p>Price: ${web3.utils.fromWei(product[2], 'ether')} ETH</p>
-          <p>Status Code: ${product[3]}</p>
-        </div>
-      `;
+      // Check for status = 4 (Delivered)
+      if (parseInt(product[3]) === 4) {
+        found = true;
 
-      container.appendChild(div);
+        const div = document.createElement('div');
+        div.className = 'product';
+        div.innerHTML = `
+          <div class="product-info">
+            <p><strong>Product ID: ${id}</strong></p>
+            <p>Weight: ${product[1]} kg</p>
+            <p>Price: ${web3.utils.fromWei(product[2], 'ether')} ETH</p>
+            <p>Status: Delivered</p>
+          </div>
+        `;
+
+        container.appendChild(div);
+      }
     }
 
-    if (ids.length === 0) {
-      container.innerHTML = "<p class='empty-text'>No shipments found</p>";
+    if (!found) {
+      container.innerHTML = "<p class='empty-text'>No shipments Delivered</p>";
     }
   } catch (err) {
-    container.innerHTML = "⚠ Failed to load shipments.";
+    container.innerHTML = "⚠️ Failed to load delivered shipments.";
     console.error(err);
   }
 }
 
+async function confirmDelivery(id) {
+  try {
+    await contract.methods.confirmDelivery(id).send({ from: accounts[0] });
+    alert("✅ Delivery confirmed!");
 
+    // Reload shipments lists
+    loadInTransitShipments();
+    loadDeliveredShipments();
+  } catch (error) {
+    console.error("❌ Error confirming delivery:", error);
+    alert("Error confirming delivery.");
+  }
+}
