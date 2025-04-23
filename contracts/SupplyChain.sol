@@ -7,6 +7,8 @@ contract SupplyChain {
         uint weight;
         uint price;
         uint stage;
+        address payable seller; // seller gets paid after delivery
+        address buyer; // buyer confirms delivery
     }
 
     mapping(uint => Product) public products; // Stores product details
@@ -23,7 +25,7 @@ contract SupplyChain {
         require(products[_id].id == 0, "Product already exists");
 
         productCount++;
-        products[_id] = Product(_id, _weight, _price, 0); // Default stage is 0 (manufactured)
+        products[_id] = Product(_id, _weight, _price, 0, payable(msg.sender), address(0)); // include seller
         productIds.push(_id); // Add the ID to the array
         emit ProductCreated(_id, _weight, _price);
     }
@@ -44,9 +46,12 @@ contract SupplyChain {
         require(product.id != 0, "Product does not exist");
         require(product.stage < 3, "Product has already been purchased or is not available for purchase");
         require(msg.value == product.price, "Incorrect price sent");
+        require(product.buyer == address(0), "Already purchased");
+
 
         // Mark the product as purchased (stage = 3)
         product.stage = 3;
+        product.buyer=msg.sender;
 
         // Store the product in the purchasedProducts mapping for the sender
         purchasedProducts[msg.sender].push(_id);
@@ -82,11 +87,15 @@ contract SupplyChain {
 
     // Function to confirm delivery (moves product to "Delivered" stage)
     function confirmDelivery(uint _id) public {
-        require(products[_id].id != 0, "Product not found");
-        require(products[_id].stage == 1, "Product must be in transit to be delivered");
+        Product storage product = products[_id]; // Get the product from the mapping
+        require(product.id != 0, "Product not found");
+        require(product.stage == 1, "Product must be in transit to be delivered");
+        require(product.buyer == msg.sender, "Only the buyer can confirm delivery");
 
-        products[_id].stage = 4; // Update to "Delivered"
-        emit ProductUpdated(_id, 4);
+        product.stage = 4; // Update to "Delivered"
+        product.seller.transfer(product.price); // Release escrow to seller
+
+        emit ProductUpdated(_id, 4);    
     }
 
 }
